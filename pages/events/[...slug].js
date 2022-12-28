@@ -1,34 +1,28 @@
 import { useRouter } from "next/router";
-import { getFilteredEvents } from "../../dummy-data";
+import { getFilteredEvents } from "../../helpers/api-util";
 import EventList from "../../components/events/event-list";
 import ErrorAllert from "../../components/ui/error-alert";
 import ResultsTitle from "../../components/events/results-title";
 import { Fragment } from "react";
 
-function FilteredEventsPAge() {
-  const route = useRouter();
-  const filteredData = route?.query?.slug;
+function FilteredEventsPAge(props) {
+  const filteredEvents = props.events;
+  console.log(props);
+  // const filteredData = route.query.slug;
 
-  if (!filteredData) {
-    return <p className="center">loading</p>;
-  }
-
-  const numYear = +filteredData[0];
-  const numMonth = +filteredData[1];
-  if (isNaN(numYear) || isNaN(numMonth) || numYear > 2030 || numYear < 2021) {
+  if (props.hasError) {
     return (
       <ErrorAllert>
-        <p className="center">invalid filters</p>
+        <p className="center">Invalid filters</p>
       </ErrorAllert>
     );
   }
 
-  const filteredEvents = getFilteredEvents({
-    year: numYear,
-    month: numMonth,
-  });
+  // if (!filteredData) {
+  //   return <p className="center">loading</p>;
+  // }
 
-  if (!filteredEvents || filteredEvents.length === 0) {
+  if (filteredEvents.length === 0) {
     return (
       <ErrorAllert>
         <p>No events found</p>
@@ -36,7 +30,7 @@ function FilteredEventsPAge() {
     );
   }
 
-  const date = new Date(numYear, numMonth - 1);
+  const date = new Date(props.date.year, props.date.month - 1);
 
   return (
     <Fragment>
@@ -46,3 +40,32 @@ function FilteredEventsPAge() {
   );
 }
 export default FilteredEventsPAge;
+
+export async function getServerSideProps(context) {
+  const { params } = context;
+  const filteredData = params.slug;
+
+  const numYear = +filteredData[0];
+  const numMonth = +filteredData[1];
+
+  const filteredEvents = await getFilteredEvents({
+    year: numYear,
+    month: numMonth,
+  });
+
+  if (isNaN(numYear) || isNaN(numMonth) || numYear > 2030 || numYear < 2021) {
+    return {
+      props: { hasError: true },
+    };
+  }
+
+  return {
+    props: {
+      events: filteredEvents,
+      date: {
+        year: numYear,
+        month: numMonth,
+      },
+    },
+  };
+}
